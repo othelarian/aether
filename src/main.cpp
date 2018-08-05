@@ -6,8 +6,8 @@
 // PLAN #########################################
 
 /*
-1. CONNECT TO SSIDs, with preferences --> IN PROGRESS
-2. RECEPTION OF UDP REQUEST
+1. CONNECT TO SSIDs, with preferences           --> DONE
+2. RECEPTION OF UDP REQUEST                     --> IN PROGRESS
 3. SENDING UDP datagram with full informations
 4. CONNECT TO THE APP
 5. SETUP LED
@@ -22,25 +22,57 @@ String sel_pwd = "";
 
 // HELPERS ######################################
 
+// scanning network and check if there is one in the whitelist available
 bool scanning() {
     bool res = false;
     int nbn = WiFi.scanNetworks();
+    sel_lvl = CONF_NB_SSID;
     for (int i = 0; i < nbn; i++) {
         String tmp_ssid = WiFi.SSID(i);
-        if (tmp_ssid == SSID_01) {
-            sel_ssid = SSID_01;
-            sel_pwd = PASS_01;
-            sel_lvl = 1;
-            return true;
-        }
-        else if (tmp_ssid == SSID_02) {
-            sel_ssid = SSID_02;
-            sel_pwd = PASS_02;
-            sel_lvl = 2;
-            res = true;
+        for (int j = 0; j < sel_lvl; j++) {
+            if (tmp_ssid == CONF_SSIDS[j]) {
+                sel_lvl = j;
+                sel_ssid = CONF_SSIDS[j];
+                sel_pwd = CONF_PASSES[j];
+                res = true;
+                break;
+            }
         }
     }
     return res;
+}
+
+// if there is no connection, this function try to init a new wireless setup
+void connecting() {
+    // scan for available network, with the conf.h whitelist
+    getnet = scanning();
+    // if there is no network available
+    if (!getnet) { delay(5000); } // delay the next scan in 5 seconds
+    else {
+        // try to connect to the selected network
+        WiFi.begin(sel_ssid.c_str(), sel_pwd.c_str());
+        // loop until the esp succeed to connect, or failed
+        bool tryconnect = true;
+        while (tryconnect) {
+            if (WiFi.status() == WL_CONNECT_FAILED) {
+                getnet = false;
+                delay(5000);
+                tryconnect = false;
+            }
+            else if (WiFi.status() == WL_CONNECTED) {
+                tryconnect = false;
+            }
+            delay(500);
+        }
+        // if the connection succeed
+        if (getnet) {
+            //
+            //
+            // TODO : setup webserver ?
+            // TODO : setup udp ?
+            //
+        }
+    }
 }
 
 // GENERAL PART #################################
@@ -48,6 +80,7 @@ bool scanning() {
 void setup() {
     // TEST PURPOSE
     pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, HIGH);
     // TEST END
     // setup the wifi
     WiFi.mode(WIFI_STA);
@@ -58,77 +91,45 @@ void setup() {
 
 void loop() {
     // if not connected, try to connect
-    if (!getnet) {
-        // TEST PURPOSE
-        digitalWrite(LED_BUILTIN, HIGH);
-        // TEST END
-        getnet = scanning();
-        // TEST PURPOSE
-        digitalWrite(LED_BUILTIN, LOW);
-        delay(500);
-        // TEST END
-        if (!getnet) {
-            // TEST PURPOSE
-            delay(300);
-            for (int i = 0; i < 3; i++) {
-                digitalWrite(LED_BUILTIN, HIGH);
-                delay(300);
-                digitalWrite(LED_BUILTIN, LOW);
-                delay(300);
-            }
-            // TEST END
-            // delay the next scan in 5 seconds
-            delay(5000);
-        }
-        else {
-            // connect to the selected network
-            WiFi.begin(sel_ssid.c_str(), sel_pwd.c_str());
-            //
-            // TODO : setup webserver ?
-            // TODO : setup udp ?
-            //
-        }
-    }
+    if (!getnet) { connecting(); }
     else {
-        //
-        // TODO : check if we are connected. If not, disconnect and set "getnet" to false
-        //
-        switch(sel_lvl) {
-            case 1:
+        // check if the connection is still up
+        if (WiFi.status() == WL_CONNECTION_LOST || WiFi.status() != WL_CONNECTED) { getnet = false; }
+        else {
+            //
+            switch(sel_lvl) {
+                case 0:
+                    //
+                    digitalWrite(LED_BUILTIN, LOW);
+                    delay(300);
+                    digitalWrite(LED_BUILTIN, HIGH);
+                    delay(300);
+                    digitalWrite(LED_BUILTIN, LOW);
+                    delay(700);
+                    digitalWrite(LED_BUILTIN, HIGH);
+                    delay(300);
+                    digitalWrite(LED_BUILTIN, LOW);
+                    delay(300);
+                    digitalWrite(LED_BUILTIN, HIGH);
+                    delay(1200);
+                    //
+                    break;
+                case 1:
+                    //
+                    digitalWrite(LED_BUILTIN, LOW);
+                    delay(800);
+                    digitalWrite(LED_BUILTIN, HIGH);
+                    delay(200);
+                    digitalWrite(LED_BUILTIN, LOW);
+                    delay(800);
+                    digitalWrite(LED_BUILTIN, HIGH);
+                    delay(1200);
+                    //
+                    break;
                 //
-                digitalWrite(LED_BUILTIN, HIGH);
-                delay(300);
-                digitalWrite(LED_BUILTIN, LOW);
-                delay(300);
-                digitalWrite(LED_BUILTIN, HIGH);
-                delay(700);
-                digitalWrite(LED_BUILTIN, LOW);
-                delay(300);
-                digitalWrite(LED_BUILTIN, HIGH);
-                delay(300);
-                digitalWrite(LED_BUILTIN, LOW);
-                delay(1200);
-                //
-                break;
-            case 2:
-                //
-                digitalWrite(LED_BUILTIN, HIGH);
-                delay(800);
-                digitalWrite(LED_BUILTIN, LOW);
-                delay(200);
-                digitalWrite(LED_BUILTIN, HIGH);
-                delay(800);
-                digitalWrite(LED_BUILTIN, LOW);
-                delay(1200);
-                //
-                break;
+            }
             //
         }
         //
-        //
     }
-    //
-    /*
-    if (WiFi.status() == WL_CONNECTED) {
-    */
 }
