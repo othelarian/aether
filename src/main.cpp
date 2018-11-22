@@ -1,16 +1,18 @@
 //#include <Arduino.h>
 #include <ESP8266WiFi.h>
+#include <WiFiUdp.h>
 
 #include "conf.h"
 
 // PLAN #########################################
 
 /*
-1. CONNECT TO SSIDs, with preferences           --> DONE
-2. RECEPTION OF UDP REQUEST                     --> IN PROGRESS
-3. SENDING UDP datagram with full informations
-4. CONNECT TO THE APP
-5. SETUP LED
+1.  CONNECT TO SSIDs, with preferences           --> DONE
+1b. ENABLE REACTING TO BAD PWD NETWORK           --> DONE
+2.  RECEPTION OF UDP REQUEST                     --> IN PROGRESS
+3.  SENDING UDP datagram with full informations
+4.  CONNECT TO THE APP
+5.  SETUP LED
 */
 
 // GLOBAL VARIABLES #############################
@@ -19,6 +21,7 @@ bool getnet = false;
 int sel_lvl = 0;
 String sel_ssid = "";
 String sel_pwd = "";
+bool good_ssid[CONF_NB_RESEAUX];
 
 // HELPERS ######################################
 
@@ -26,14 +29,14 @@ String sel_pwd = "";
 bool scanning() {
     bool res = false;
     int nbn = WiFi.scanNetworks();
-    sel_lvl = CONF_NB_SSID;
+    sel_lvl = CONF_NB_RESEAUX;
     for (int i = 0; i < nbn; i++) {
         String tmp_ssid = WiFi.SSID(i);
         for (int j = 0; j < sel_lvl; j++) {
-            if (tmp_ssid == CONF_SSIDS[j]) {
+            if (good_ssid[j] && tmp_ssid == CONF_RESEAUX[j].ssid) {
                 sel_lvl = j;
-                sel_ssid = CONF_SSIDS[j];
-                sel_pwd = CONF_PASSES[j];
+                sel_ssid = CONF_RESEAUX[j].ssid;
+                sel_pwd = CONF_RESEAUX[j].pwd;
                 res = true;
                 break;
             }
@@ -56,21 +59,14 @@ void connecting() {
         while (tryconnect) {
             if (WiFi.status() == WL_CONNECT_FAILED) {
                 getnet = false;
-                delay(5000);
+                good_ssid[sel_lvl] = false;
+                delay(1000);
                 tryconnect = false;
             }
             else if (WiFi.status() == WL_CONNECTED) {
                 tryconnect = false;
             }
-            delay(500);
-        }
-        // if the connection succeed
-        if (getnet) {
-            //
-            //
-            // TODO : setup webserver ?
-            // TODO : setup udp ?
-            //
+            delay(300);
         }
     }
 }
@@ -82,6 +78,8 @@ void setup() {
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, HIGH);
     // TEST END
+    // setup some global variables
+    for (int i = 0; i < CONF_NB_RESEAUX; i++) { good_ssid[i] = true; }
     // setup the wifi
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
@@ -101,17 +99,9 @@ void loop() {
                 case 0:
                     //
                     digitalWrite(LED_BUILTIN, LOW);
-                    delay(300);
+                    delay(200);
                     digitalWrite(LED_BUILTIN, HIGH);
-                    delay(300);
-                    digitalWrite(LED_BUILTIN, LOW);
-                    delay(700);
-                    digitalWrite(LED_BUILTIN, HIGH);
-                    delay(300);
-                    digitalWrite(LED_BUILTIN, LOW);
-                    delay(300);
-                    digitalWrite(LED_BUILTIN, HIGH);
-                    delay(1200);
+                    delay(200);
                     //
                     break;
                 case 1:
@@ -120,10 +110,6 @@ void loop() {
                     delay(800);
                     digitalWrite(LED_BUILTIN, HIGH);
                     delay(200);
-                    digitalWrite(LED_BUILTIN, LOW);
-                    delay(800);
-                    digitalWrite(LED_BUILTIN, HIGH);
-                    delay(1200);
                     //
                     break;
                 //
